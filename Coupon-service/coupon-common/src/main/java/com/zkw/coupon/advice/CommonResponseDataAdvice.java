@@ -42,7 +42,9 @@ public class CommonResponseDataAdvice implements ResponseBodyAdvice<Object> {
         return true;
     }
 
-
+    /**
+     * 响应返回之前的处理
+     */
     @Override
     @SuppressWarnings("all")
     public Object beforeBodyWrite(Object o,
