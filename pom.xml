@@ -11,6 +11,7 @@
     <modules>
         <module>coupon-eureka</module>
         <module>coupon-gateway</module>
+        <module>Coupon-service</module>
     </modules>
 
     <name>Coupon</name>
