@@ -16,9 +16,9 @@ import org.springframework.stereotype.Service;
 @Service
 public class BuildTemplateServiceImpl implements IBuildTemplateService {
 
-    private IAsyncService asyncService;
+    private final IAsyncService asyncService;
 
-    private CouponTemplateDao couponTemplateDao;
+    private final CouponTemplateDao couponTemplateDao;
 
     public BuildTemplateServiceImpl(IAsyncService asyncService, CouponTemplateDao couponTemplateDao) {
         this.asyncService = asyncService;

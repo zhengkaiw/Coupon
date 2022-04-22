@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 public class TemplateBaseServiceImpl implements ITemplateBaseService {
 
     // CouponTemplate Dao
-    private CouponTemplateDao couponTemplateDao;
+    private final CouponTemplateDao couponTemplateDao;
 
     public TemplateBaseServiceImpl(CouponTemplateDao couponTemplateDao) {
         this.couponTemplateDao = couponTemplateDao;
