@@ -28,13 +28,13 @@ public class CouponTemplateSDK {
     private String category;
 
     // 产品线
-    private String productLine;
+    private Integer productLine;
 
     // 优惠券模板编码
     private String key;
 
     // 目标用户
-    private String target;
+    private Integer target;
 
     // 优惠券规则
     private TemplateRule rule;
