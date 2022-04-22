@@ -75,7 +75,7 @@ public class CouponTemplate implements Serializable {
 
     // 创建时间
     @CreatedDate
-    @Column(name = "createTime", nullable = false)
+    @Column(name = "create_Time", nullable = false)
     private Date createTime;
 
     // 创建用户
