@@ -7,7 +7,6 @@ import com.zkw.coupon.entity.CouponTemplate;
 import com.zkw.coupon.service.IAsyncService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
