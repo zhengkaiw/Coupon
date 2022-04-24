@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="coupon-template" />
+        <module name="coupon-distribution" />
         <module name="coupon-common" />
         <module name="coupon-eureka" />
         <module name="coupon-gateway" />
@@ -18,6 +19,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="Coupon-service" options="-parameters" />
       <module name="coupon-common" options="-parameters" />
+      <module name="coupon-distribution" options="-parameters" />
       <module name="coupon-eureka" options="-parameters" />
       <module name="coupon-gateway" options="-parameters" />
       <module name="coupon-template" options="-parameters" />

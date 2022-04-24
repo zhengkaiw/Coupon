@@ -2,6 +2,7 @@
 <project version="4">
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/Coupon-service/coupon-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Coupon-service/coupon-distribution/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Coupon-service/coupon-template/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/coupon-eureka/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/coupon-eureka/src/main/resources" charset="UTF-8" />
