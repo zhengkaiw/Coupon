@@ -9,7 +9,7 @@ public interface IKafkaService {
 
     /**
      * 消费优惠券 Kafka 消息
-     * @param recore {@link ConsumerRecord}
+     * @param record {@link ConsumerRecord}
      */
-    void consumeCouponKafkaMessage(ConsumerRecord<?, ?> recore);
+    void consumeCouponKafkaMessage(ConsumerRecord<?, ?> record);
 }
