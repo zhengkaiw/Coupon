@@ -43,17 +43,17 @@ public class RedisServiceImpl implements IRedisService {
         log.info("Get coupons from Cache: {}, {}", userId, status);
         String redisKey = status2RedisKey(status, userId);
 
-        List<String> couponStrs = redisTemplate.opsForHash().values(redisKey)
+        List<String> couponStr = redisTemplate.opsForHash().values(redisKey)
                 .stream()
                 .map(o -> Objects.toString(o, null))
                 .collect(Collectors.toList());
 
-        if (CollectionUtils.isEmpty(couponStrs)) {
+        if (CollectionUtils.isEmpty(couponStr)) {
             saveEmptyCouponListToCache(userId, Collections.singletonList(status));
             return Collections.emptyList();
         }
 
-        return couponStrs.stream()
+        return couponStr.stream()
                 .map(cs -> JSON.parseObject(cs, Coupon.class))
                 .collect(Collectors.toList());
     }
