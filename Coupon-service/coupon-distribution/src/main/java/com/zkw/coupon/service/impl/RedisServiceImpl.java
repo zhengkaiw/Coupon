@@ -16,6 +16,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -134,15 +135,184 @@ public class RedisServiceImpl implements IRedisService {
 
         switch (couponStatus) {
             case USABLE:
+                result = addCouponToCacheForUsable(userId, coupons);
                 break;
             case USED:
+                result = addCouponToCacheForUsed(userId, coupons);
                 break;
             case EXPIRED:
+                result = addCouponToCacheForExpired(userId, coupons);
                 break;
             default:
         }
 
         return result;
+    }
+
+    /**
+     * 新增优惠券到 Cache 中
+     */
+    private Integer addCouponToCacheForUsable(Long userId, List<Coupon> coupons) throws CouponException{
+
+        // 如果 status 是 USABLE, 代表是新增加的优惠券
+        // 只会影响一个 Cache: USER_COUPON_USABLE
+        log.debug("Add coupon to cache for usable");
+
+        Map<String, String> needCachedObject = new HashMap<>(coupons.size());
+        coupons.forEach(c -> needCachedObject.put(
+                c.getId().toString(),
+                JSON.toJSONString(c)
+        ));
+
+        String redisKey = status2RedisKey(CouponStatus.USABLE.getCode(), userId);
+
+        redisTemplate.opsForHash().putAll(redisKey, needCachedObject);
+        log.info("Add {} coupons to Cache:{}, {}", needCachedObject.size(), userId, redisKey);
+
+        redisTemplate.expire(redisKey, getRandomExpirationTime(1, 2), TimeUnit.SECONDS);
+
+        return needCachedObject.size();
+    }
+
+    /**
+     * 将已使用的优惠券加入到 Cache 中
+     */
+    @SuppressWarnings("all")
+    private Integer addCouponToCacheForUsed(Long userId, List<Coupon> coupons) throws CouponException {
+
+        // 如果 status 是 USED, 代表用户操作是使用当前的优惠券, 影响到两个 Cache
+        // USABLE, USED
+        log.debug("Add coupon to cache for used");
+
+        Map<String, String> needCachedForUsed = new HashMap<>(coupons.size());
+
+        String redisKeyForUsable = status2RedisKey(CouponStatus.USABLE.getCode(), userId);
+        String redisKeyForUsed = status2RedisKey(CouponStatus.USED.getCode(), userId);
+
+        // 获取当前用户可用的优惠券
+        List<Coupon> curUsableCoupons = getCachedCoupons(userId, CouponStatus.USABLE.getCode());
+
+        // 当前可用的优惠券个数一定大于1
+        assert curUsableCoupons.size() > coupons.size();
+
+        coupons.forEach(c -> needCachedForUsed.put(
+                c.getId().toString(),
+                JSON.toJSONString(c)
+        ));
+
+        // 校验当前的优惠券参数是否与 cache 中的匹配
+        List<Integer> curUsableIds = curUsableCoupons.stream()
+                .map(Coupon::getId)
+                .collect(Collectors.toList());
+        List<Integer> paramIds = coupons.stream()
+                .map(Coupon::getId)
+                .collect(Collectors.toList());
+
+        if (!CollectionUtils.isSubCollection(paramIds, curUsableCoupons)) {
+            log.error("CurCoupons not equals to cache: {}, {}, {}",
+                    userId, JSON.toJSONString(curUsableIds), JSON.toJSONString(paramIds));
+            throw new CouponException("CurCoupons not equals to cache");
+        }
+
+        List<String> needCleanKey = paramIds.stream()
+                .map(Object::toString)
+                .collect(Collectors.toList());
+        SessionCallback<Object> sessionCallback = new SessionCallback<Object>() {
+            @Override
+            public Object execute(RedisOperations redisOperations) throws DataAccessException {
+
+                // 1. 已使用的优惠券 cache 缓存
+                redisOperations.opsForHash().putAll(redisKeyForUsed, needCachedForUsed);
+                // 2. 可用的优惠券 cache 需要清理
+                redisOperations.opsForHash().delete(redisKeyForUsable, needCleanKey);
+                // 3. 重置过期时间
+                redisOperations.expire(redisKeyForUsable, getRandomExpirationTime(1, 2), TimeUnit.SECONDS);
+                redisOperations.expire(redisKeyForUsed, getRandomExpirationTime(1, 2), TimeUnit.SECONDS);
+
+                return null;
+            }
+        };
+        log.info("Pipeline Execute Result: {}", JSON.toJSONString(redisTemplate.executePipelined(sessionCallback)));
+
+        return coupons.size();
+    }
+
+    /**
+     * 将过期的优惠券加入到 Cache 中
+     */
+    @SuppressWarnings("all")
+    private Integer addCouponToCacheForExpired(Long userId, List<Coupon> coupons) throws CouponException {
+
+        // status 是 EXPIRED, 代表是已有的优惠券过期了, 影响到两个 Cache
+        // USABLE, EXPIRED
+
+        log.debug("Add coupon to cache for expired");
+
+        // 最终需要保存的 Cache
+        Map<String, String> needCachedForExpired = new HashMap<>(coupons.size());
+
+        String redisKeyForUsable = status2RedisKey(CouponStatus.USABLE.getCode(), userId);
+        String redisKeyForExpired = status2RedisKey(CouponStatus.EXPIRED.getCode(), userId);
+
+        List<Coupon> curUsableCoupons = getCachedCoupons(userId, CouponStatus.USABLE.getCode());
+        List<Coupon> curExpiredCoupons = getCachedCoupons(userId, CouponStatus.EXPIRED.getCode());
+
+        // 当前可用的优惠券个数一定大于1
+        assert curUsableCoupons.size() > coupons.size();
+
+        coupons.forEach(c -> needCachedForExpired.put(
+                c.getId().toString(),
+                JSON.toJSONString(c)
+        ));
+
+        // 校验当前的优惠券参数是否与 Cache 中的匹配
+        List<Integer> curUsableIds = curUsableCoupons.stream()
+                .map(Coupon::getId)
+                .collect(Collectors.toList());
+        List<Integer> paramIds = coupons.stream()
+                .map(Coupon::getId)
+                .collect(Collectors.toList());
+        if (CollectionUtils.isSubCollection(paramIds, curUsableIds)) {
+            log.error("CurCoupons not equals to cahce: {}, {}, {}",
+                    userId, JSON.toJSONString(curUsableIds), JSON.toJSONString(paramIds));
+            throw new CouponException("CurCoupon not equals to cache");
+        }
+
+        List<String> needCleanKey = paramIds.stream()
+                .map(Object::toString)
+                .collect(Collectors.toList());
+
+        SessionCallback<Objects> sessionCallback = new SessionCallback<Objects>() {
+            @Override
+            public Objects execute(RedisOperations redisOperations) throws DataAccessException {
+
+                // 1. 已过期的优惠券 cache 缓存
+                redisOperations.opsForHash().putAll(
+                        redisKeyForExpired, needCachedForExpired
+                );
+                // 2. 可用的优惠券 cache 需要清理
+                redisOperations.opsForHash().delete(
+                        redisKeyForUsable, needCleanKey.toArray()
+                );
+                // 3. 重置过期时间
+                redisOperations.expire(
+                        redisKeyForUsable,
+                        getRandomExpirationTime(1, 2),
+                        TimeUnit.SECONDS
+                );
+                redisOperations.expire(
+                        redisKeyForExpired,
+                        getRandomExpirationTime(1, 2),
+                        TimeUnit.SECONDS
+                );
+
+                return null;
+            }
+        };
+        log.info("Pipeline executes result: {}",
+                JSON.toJSONString(redisTemplate.executePipelined(sessionCallback)));
+
+        return coupons.size();
     }
 
     /**
