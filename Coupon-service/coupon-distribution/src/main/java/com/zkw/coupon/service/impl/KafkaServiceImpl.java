@@ -10,7 +10,6 @@ import com.zkw.coupon.vo.CouponKafkaMessage;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +43,7 @@ public class KafkaServiceImpl implements IKafkaService {
             Object message = kafkaMessage.get();
             CouponKafkaMessage couponInfo = JSON.parseObject(message.toString(), CouponKafkaMessage.class);
 
-            log.info("Received CouponKafkaMessage: {}", message.toString());
+            log.info("Received CouponKafkaMessage: {}", message);
             CouponStatus status = CouponStatus.of(couponInfo.getStatus());
 
             switch (status) {
