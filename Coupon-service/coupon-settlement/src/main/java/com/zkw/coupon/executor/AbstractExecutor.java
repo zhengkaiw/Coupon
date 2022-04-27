@@ -47,10 +47,10 @@ public abstract class AbstractExecutor {
      */
     protected SettlementInfo processGoodsTypeNotSatisfy(SettlementInfo settlement, double goodsSum) {
 
-        boolean isGoodsTypeSatify = isGoodsTypeSatisfy(settlement);
+        boolean isGoodsTypeSatisfy = isGoodsTypeSatisfy(settlement);
 
         // 当商品类型不满足时, 直接返回总价, 并清空优惠券
-        if (!isGoodsTypeSatify) {
+        if (!isGoodsTypeSatisfy) {
             settlement.setCost(goodsSum);
             settlement.setCouponAndTemplateInfos(Collections.emptyList());
 
