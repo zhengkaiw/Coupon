@@ -13,12 +13,16 @@ import com.zkw.coupon.service.IUserService;
 import com.zkw.coupon.vo.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.collections4.CollectionUtils;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -241,11 +245,91 @@ public class UserServiceImpl implements IUserService {
 
     /**
      * 结算(核销)优惠券
+     * SettlementInfo 与结算微服务是通用的，所以需要定义在共用的地方, 即coupon-common中
+     * 这里需要注意, 规则相关处理需要由 Settlement 系统去做, 当前系统仅仅做业务处理过程(校验过程)
      * @param info {@link SettlementInfo}
      * @return {@link SettlementInfo}
      */
     @Override
     public SettlementInfo settlement(SettlementInfo info) throws CouponException {
-        return null;
+
+        // 当没有传递优惠券时, 直接返回商品总价
+        List<SettlementInfo.CouponAndTemplateInfo> ctInfos = info.getCouponAndTemplateInfos();
+
+        if (CollectionUtils.isEmpty(ctInfos)) {
+
+            log.info("Empty coupons for settlement");
+            // 商品总价
+            double goodsSum = 0.0;
+
+            for (GoodsInfo gi : info.getGoodsInfos()) {
+                goodsSum += gi.getPrice() * gi.getCount();
+            }
+
+            // 没有优惠券也就不存在优惠券的核销, SettlementInfo 其他的字段不需要修改
+            info.setCost(retain2Decimals(goodsSum));
+        }
+
+        // 校验传递的优惠券是否是用户自己的
+        List<Coupon> coupons = findCouponsByStatus(
+                info.getUserId(), CouponStatus.USABLE.getCode()
+        );
+
+        // 这里的 id 是优惠券的 id
+        Map<Integer, Coupon> id2Coupon = coupons.stream()
+                .collect(Collectors.toMap(
+                        Coupon::getId,
+                        Function.identity()
+                ));
+
+        if (MapUtils.isEmpty(id2Coupon) || !CollectionUtils.isSubCollection(
+                ctInfos.stream().map(SettlementInfo.CouponAndTemplateInfo::getId)
+                        .collect(Collectors.toList()), id2Coupon.keySet()
+        )) {
+            log.info("{}", id2Coupon.keySet());
+            log.info("{}", ctInfos.stream()
+                    .map(SettlementInfo.CouponAndTemplateInfo::getId)
+                    .collect(Collectors.toList()));
+            log.error("User Coupon has some problems. It is not SubCollection" +
+                    "of coupons");
+            throw new CouponException("User Coupon has some problems. It is not SubCollection" +
+                    "of coupons");
+        }
+        log.debug("Current settlement coupons is user's: {}", ctInfos.size());
+
+        List<Coupon> settleCoupons = new ArrayList<>(ctInfos.size());
+        ctInfos.forEach(ci -> settleCoupons.add(id2Coupon.get(ci.getId())));
+
+        // 通过结算服务获取结算信息
+        SettlementInfo processedInfo = settlementClient.computeRule(info).getData();
+        if (processedInfo.getEmploy() && CollectionUtils.isNotEmpty(
+                processedInfo.getCouponAndTemplateInfos()
+        )) {
+            log.info("Settle user coupon: {}, {}", info.getUserId(), JSON.toJSONString(settleCoupons));
+            // 更新缓存
+            redisService.addCouponToCache(
+                    info.getUserId(),
+                    settleCoupons,
+                    CouponStatus.USED.getCode()
+            );
+            // 更新 db
+            kafkaTemplate.send(
+                    Constant.TOPIC,
+                    JSON.toJSONString(new CouponKafkaMessage(
+                            CouponStatus.USED.getCode(),
+                            settleCoupons.stream().map(Coupon::getId)
+                                    .collect(Collectors.toList())
+                    ))
+            );
+        }
+        return processedInfo;
+    }
+
+    private double retain2Decimals(double value) {
+
+        // BigDecimal.ROUND_HALF_UP 代表四舍五入
+        return new BigDecimal(value)
+                .setScale(2, RoundingMode.HALF_UP)
+                .doubleValue();
     }
 }
