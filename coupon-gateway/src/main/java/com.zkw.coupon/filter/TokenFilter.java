@@ -9,7 +9,7 @@ import javax.servlet.http.HttpServletRequest;
  * 校验请求中传递的 Token
  */
 @Slf4j
-@Component
+//@Component
 public class TokenFilter extends AbstractPreZuulFilter {
 
     @Override

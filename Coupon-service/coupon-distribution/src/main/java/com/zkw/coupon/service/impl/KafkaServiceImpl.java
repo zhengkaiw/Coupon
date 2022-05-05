@@ -43,7 +43,7 @@ public class KafkaServiceImpl implements IKafkaService {
             Object message = kafkaMessage.get();
             CouponKafkaMessage couponInfo = JSON.parseObject(message.toString(), CouponKafkaMessage.class);
 
-            log.info("Received CouponKafkaMessage: {}", message);
+            log.info("Received CouponKafkaMessage: {}", message.toString());
             CouponStatus status = CouponStatus.of(couponInfo.getStatus());
 
             switch (status) {

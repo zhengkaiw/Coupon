@@ -19,9 +19,9 @@
           },
           "limitation": 1,
           "usage": {
-            "city": "文昌市",
+            "city": "Chaoyang",
             "goodsType": "[1,3]",
-            "province": "海南省"
+            "province": "Beijing"
           },
           "weight": "[]"
         }

@@ -1,0 +1,29 @@
+{
+  "available": 0,
+  "category": "003",
+  "count": 1000,
+  "desc": "This is the third coupon",
+  "logo": "http://www.test.com",
+  "name": "Coupon03",
+  "productLine": "1",
+  "rule": {
+    "discount": {
+      "base": 1,
+      "quota": 5
+    },
+    "expiration": {
+      "deadline": 1568082612129,
+      "gap": 1,
+      "period": 1
+    },
+    "limitation": 1,
+    "usage": {
+      "city": "Chaoyang",
+      "goodsType": "[1,3]",
+      "province": "Beijing"
+    },
+    "weight": "[]"
+  },
+  "target": "1",
+  "userId": 10001
+}
